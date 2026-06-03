@@ -7,9 +7,29 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+
+add_executable(grasping_node src/grasping.cpp)
+ament_target_dependencies(grasping_node
+  moveit_ros_planning_interface
+  rclcpp
+  std_srvs)
+
+add_executable(joint_state_filter src/joint_state_filter.cpp)
+ament_target_dependencies(joint_state_filter
+  rclcpp
+  sensor_msgs)
+
+install(TARGETS
+  grasping_node
+  joint_state_filter
+  DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
