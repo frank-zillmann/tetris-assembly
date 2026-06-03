@@ -4,6 +4,7 @@ import tty
 import sys
 
 import rclpy
+from action_msgs.msg import GoalStatus
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from control_msgs.action import GripperCommand
@@ -15,14 +16,14 @@ class ArmTeleop(Node):
     def __init__(self):
         super().__init__("arm_teleop")
         self.arm_step = 0.2
-        self.gripper_step = 0.1
+        self.gripper_step = 0.2
         self.joint_names = [
             "shoulder_pan_joint",
             "shoulder_lift_joint",
             "elbow_joint",
             "wrist_joint",
         ]
-        self.positions = {name: 0.0 for name in self.joint_names}
+        self.positions = {name: None for name in self.joint_names}
         self.gripper_pos = None
         self.publisher = self.create_publisher(
             JointTrajectory, "/mirte_master_arm_controller/joint_trajectory", 1
@@ -31,7 +32,7 @@ class ArmTeleop(Node):
             self, GripperCommand, "/mirte_master_gripper_controller/gripper_cmd"
         )
         self.create_subscription(JointState, "/joint_states", self._on_joint_state, 10)
-        self._log("Arm teleop: q/a w/s e/d r/f, t/g gripper")
+        self._log("Arm teleop via q/a w/s e/d r/f t/g; Printing the joints via space bar")
 
     def _on_joint_state(self, msg):
         for name, position in zip(msg.name, msg.position):
@@ -41,6 +42,9 @@ class ArmTeleop(Node):
                 self.gripper_pos = position
 
     def handle_key(self, key):
+        if key == " ":
+            self._print_joint_states()
+            return
         if key == "t":
             self._step_gripper(self.gripper_step)
             return
@@ -59,10 +63,17 @@ class ArmTeleop(Node):
         }
         if key in mapping:
             joint, delta = mapping[key]
+            if self.positions[joint] is None:
+                self.get_logger().warning(f"No position yet for {joint}")
+                return
             self.positions[joint] += delta
             self._publish_trajectory()
 
     def _publish_trajectory(self):
+        missing = [name for name in self.joint_names if self.positions[name] is None]
+        if missing:
+            self.get_logger().warning("No position yet for: " + ", ".join(missing))
+            return
         traj = JointTrajectory()
         traj.joint_names = self.joint_names
         point = JointTrajectoryPoint()
@@ -71,21 +82,50 @@ class ArmTeleop(Node):
         traj.points = [point]
         self.publisher.publish(traj)
 
+    def _print_joint_states(self):
+        states = [f"{name}={self.positions[name]}" for name in self.joint_names]
+        states.append(f"gripper_joint={self.gripper_pos}")
+        self._log("Joint states: " + ", ".join(states))
+
     def _step_gripper(self, delta):
         if self.gripper_pos is None:
-            self.get_logger().warning("No gripper position yet")
+            self._log("No gripper position yet")
             return
-        self._log(f"Gripper step: current={self.gripper_pos:.4f} delta={delta:+.4f}")
         self._send_gripper(self.gripper_pos + delta)
 
     def _send_gripper(self, position):
         if not self.gripper_client.wait_for_server(timeout_sec=0.5):
-            self.get_logger().warning("Gripper action server not available")
+            self._log("Gripper action server not available")
             return
         goal = GripperCommand.Goal()
         goal.command.position = position
         goal.command.max_effort = 2.0
-        self.gripper_client.send_goal_async(goal)
+
+        def on_result(future):
+            response = future.result()
+            status = {
+                GoalStatus.STATUS_SUCCEEDED: "SUCCEEDED",
+                GoalStatus.STATUS_CANCELED: "CANCELED",
+                GoalStatus.STATUS_ABORTED: "ABORTED",
+            }.get(response.status, str(response.status))
+            self._log(
+                "Gripper result: "
+                f"status={status}, "
+                f"position={response.result.position:.4f}, "
+                f"effort={response.result.effort:.4f}, "
+                f"stalled={response.result.stalled}, "
+                f"reached_goal={response.result.reached_goal}"
+            )
+
+        def on_goal(future):
+            goal_handle = future.result()
+            if goal_handle.accepted:
+                goal_handle.get_result_async().add_done_callback(on_result)
+            else:
+                self._log("Gripper goal rejected")
+
+        self._log(f"Sending gripper goal: goal position={position:.4f}, current position={self.gripper_pos:.4f}")
+        self.gripper_client.send_goal_async(goal).add_done_callback(on_goal)
 
     def _log(self, message):
         sys.stdout.write("\r\n")
