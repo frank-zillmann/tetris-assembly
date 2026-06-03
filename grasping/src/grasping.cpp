@@ -1,5 +1,6 @@
 #include <map>
 #include <memory>
+#include <string>
 
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -33,8 +34,9 @@ public:
     arm_interface_.setPlanningTime(1.0);
     arm_interface_.setNumPlanningAttempts(3);
     arm_interface_.setGoalPositionTolerance(0.02);
-    arm_interface_.setGoalOrientationTolerance(3.14159);
+    arm_interface_.setGoalOrientationTolerance(0.5);
     arm_interface_.setGoalJointTolerance(0.1);
+
     open_gripper_service_ = node_->create_service<Trigger>(
       "open_gripper",
       [this](const std::shared_ptr<Trigger::Request>, std::shared_ptr<Trigger::Response> response) {
@@ -63,9 +65,9 @@ private:
   rclcpp::Service<Trigger>::SharedPtr move_to_carry_pose_service_;
 
   bool move_gripper(
-    const char * target,
-    const char * success_message,
-    const char * failure_message,
+    const std::string target,
+    const std::string success_message,
+    const std::string failure_message,
     const std::shared_ptr<Trigger::Response> & response)
   {
     gripper_interface_.setNamedTarget(target);
