@@ -20,7 +20,7 @@ from scipy.spatial.transform import Rotation
 
 # currated list of our markers with additional information and parameters
 MARKER_CONFIG = {
-    1: {
+    0: {
         "name": "tetris_grid",
         "size_m": 0.05,  # 5cm marker
         # Offset in marker frame where robot should navigate to.
@@ -31,7 +31,7 @@ MARKER_CONFIG = {
         # (Assuming robot front is +X, and marker Z is out)
         "target_yaw_offset": math.pi 
     },
-    2: {
+    1: {
         "name": "storage_area",
         "size_m": 0.1,  # 10cm
         "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
@@ -50,11 +50,11 @@ class DetectionNode(Node):
 
         self.declare_parameter('camera_info_topic', '/gripper_camera/camera_info')
         self.declare_parameter('use_hardcoded_camera_info', True)
-        self.declare_parameter('fallback_camera_k', [500.0, 0.0, 320.0, 0.0, 500.0, 240.0, 0.0, 0.0, 1.0]) # camera matrix
+        self.declare_parameter('fallback_camera_k', [540.0, 0.0, 320.0, 0.0, 540.0, 240.0, 0.0, 0.0, 1.0]) # camera matrix
         self.declare_parameter('fallback_camera_d', [0.0, 0.0, 0.0, 0.0, 0.0]) # camera distortion (Radial Distortion (3) & Tangential Distortion (2))
 
         self.declare_parameter('process_every_n', 3)
-        self.declare_parameter('aruco_dict', 'DICT_4X4_50')
+        self.declare_parameter('aruco_dict', 'DICT_5X5_1000')
 
         self._look_for_marker_ids: set[int] = set()  # empty = not looking for any marker
 
