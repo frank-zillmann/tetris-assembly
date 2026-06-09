@@ -7,16 +7,36 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(action_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "action/PickTile.action"
+  "action/DropTile.action"
+  DEPENDENCIES geometry_msgs action_msgs)
 
 add_executable(grasping_node src/grasping.cpp)
+target_include_directories(grasping_node PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 ament_target_dependencies(grasping_node
+  geometry_msgs
   moveit_ros_planning_interface
   rclcpp
-  std_srvs)
+  rclcpp_action
+  tf2_geometry_msgs
+  tf2_ros)
+
+# Link the C++ typesupport for the actions generated above (same package).
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
+target_link_libraries(grasping_node "${cpp_typesupport_target}")
 
 add_executable(joint_state_filter src/joint_state_filter.cpp)
 ament_target_dependencies(joint_state_filter
