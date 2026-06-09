@@ -1,0 +1,10 @@
+# Goal
+# Target Tile position
+geometry_msgs/PointStamped pos
+---
+# Result
+bool success
+string message
+---
+# Feedback
+string status
