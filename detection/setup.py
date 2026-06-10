@@ -13,8 +13,8 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Frank Zillmann',
-    maintainer_email='frank.zillmann@tum.de',
+    maintainer='Moritz Cermann',
+    maintainer_email='moritz.cermann@gmx.de',
     description='TODO: Package description',
     license='TODO: License declaration',
     extras_require={
@@ -24,7 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'detection = detection.detection:main'
+            'detection = detection.detection:main',
+            'grid_analysis = detection.grid_analysis:main',
         ],
     },
 )

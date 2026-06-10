@@ -22,7 +22,7 @@ from scipy.spatial.transform import Rotation
 MARKER_CONFIG = {
     0: {
         "name": "tetris_grid",
-        "size_m": 0.05,  # 5cm marker
+        "size_m": 0.1,  # 10cm marker
         # Offset in marker frame where robot should navigate to.
         # Marker Z points out (towards camera), X right, Y down.
         # To be 50cm in front of it: Z = 0.5.
@@ -32,6 +32,54 @@ MARKER_CONFIG = {
         "target_yaw_offset": math.pi 
     },
     1: {
+        "name": "Block",
+        "size_m": 0.03,  # 3cm
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_yaw_offset": math.pi
+    },
+    2: {
+        "name": "Block",
+        "size_m": 0.03,  # 3cm
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_yaw_offset": math.pi
+    },
+    3: {
+        "name": "Block",
+        "size_m": 0.03,  # 3cm
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_yaw_offset": math.pi
+    },
+    4: {
+        "name": "Block",
+        "size_m": 0.03,  # 3cm
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_yaw_offset": math.pi
+    },
+    5: {
+        "name": "Block",
+        "size_m": 0.03,  # 3cm
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_yaw_offset": math.pi
+    },
+    6: {
+        "name": "Block",
+        "size_m": 0.03,  # 3cm
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_yaw_offset": math.pi
+    },
+    7: {
+        "name": "Block",
+        "size_m": 0.03,  # 3cm
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_yaw_offset": math.pi
+    },
+    8: {
+        "name": "Block",
+        "size_m": 0.03,  # 3cm
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_yaw_offset": math.pi
+    },
+    9: {
         "name": "storage_area",
         "size_m": 0.1,  # 10cm
         "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
@@ -53,8 +101,8 @@ class DetectionNode(Node):
         self.declare_parameter('fallback_camera_k', [540.0, 0.0, 320.0, 0.0, 540.0, 240.0, 0.0, 0.0, 1.0]) # camera matrix
         self.declare_parameter('fallback_camera_d', [0.0, 0.0, 0.0, 0.0, 0.0]) # camera distortion (Radial Distortion (3) & Tangential Distortion (2))
 
-        self.declare_parameter('process_every_n', 3)
-        self.declare_parameter('aruco_dict', 'DICT_5X5_1000')
+        self.declare_parameter('process_every_n', 6)
+        self.declare_parameter('aruco_dict', 'DICT_4X4_1000')
 
         self._look_for_marker_ids: set[int] = set()  # empty = not looking for any marker
 
@@ -130,8 +178,14 @@ class DetectionNode(Node):
         # Aruco setup
         dict_str = self.get_parameter('aruco_dict').value # read parameter to make it more modular
         self._aruco_dict = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, dict_str))
-        self._aruco_params = cv2.aruco.DetectorParameters()
-        self._detector = cv2.aruco.ArucoDetector(self._aruco_dict, self._aruco_params)
+        self._aruco_params = cv2.aruco.DetectorParameters_create()
+
+        if hasattr(cv2.aruco, 'ArucoDetector'):
+            self._detector = cv2.aruco.ArucoDetector(self._aruco_dict, self._aruco_params)
+            self._use_new_aruco_api = True
+        else:
+            self._detector = None
+            self._use_new_aruco_api = False
 
 
     def _target_callback(self, msg: Int32MultiArray):
@@ -185,7 +239,13 @@ class DetectionNode(Node):
 
         # convert to grayscale
         gray_cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-        corners, ids, rejected = self._detector.detectMarkers(gray_cv_img)
+
+        if self._use_new_aruco_api:
+            corners, ids, rejected = self._detector.detectMarkers(gray_cv_img)
+        else:
+            corners, ids, rejected = cv2.aruco.detectMarkers(
+                gray_cv_img, self._aruco_dict, parameters=self._aruco_params
+            )
 
         self.get_logger().debug(f"Detected markers: {ids}")
         if ids is not None:
@@ -280,8 +340,6 @@ class DetectionNode(Node):
         self._found_marker_pub.publish(found_msg)
 
 
-
- 
 
 
 def main(args=None):
