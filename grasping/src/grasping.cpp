@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <functional>
 #include <map>
 #include <memory>
@@ -34,8 +35,10 @@ const std::map<std::string, double> carry_pose = {
   {"wrist_joint", -1.55},
 };
 
-// Height of the approach/retreat point straight above the tile [m].
+// Height of the approach point straight above the tile [m].
 constexpr double kApproachHeight = 0.03;
+// Lowest the gripper_center is allowed to go in base_link [m]; tile positions are clamped up to this.
+constexpr double kMinTileZ = 0.022;
 }
 
 class TileGrasping
@@ -49,7 +52,7 @@ public:
       // "joint name", {lower_limit, upper_limit, lower_tolerance, upper_tolerance}
       {"shoulder_pan_joint", {-M_PI / 2.0, M_PI / 2.0, 0.01, 0.01}},
       {"shoulder_lift_joint", {-M_PI / 2.0, M_PI / 2.0, 0.0, 0.0}},
-      {"elbow_joint", {-M_PI / 2.0, M_PI / 2.0, 0.01, 0.01}},
+      {"elbow_joint", {-1.7, M_PI / 2.0, 0.01, 0.01}},
       {"wrist_joint", {-M_PI / 2.0, M_PI / 2.0, 0.02, 0.02}},
     }),
     arm_interface_(node_, "mirte_arm"),
@@ -249,12 +252,13 @@ private:
     geometry_msgs::msg::PointStamped tile = goal->pos;
     tile.header.stamp = rclcpp::Time(0);
 
-    std::optional<std::map<std::string, double>> approach, grasp;
+    std::optional<std::map<std::string, double>> grasp;
     try {
       auto tile_base = tf_buffer_.transform(tile, "base_link", tf2::durationFromSec(0.3)).point;
+      tile_base.z = std::max(tile_base.z, kMinTileZ);
       grasp = solve_ik(tile_base);
       tile_base.z += kApproachHeight;
-      approach = solve_ik(tile_base);
+      // approach = solve_ik(tile_base);
     } catch (const tf2::TransformException & ex) {
       result->success = false;
       result->message = std::string("pick TF failed: ") + ex.what();
@@ -269,18 +273,17 @@ private:
       goal_handle->abort(result);
       return;
     }
-    if (!approach) {
-      result->success = false;
-      result->message = "approach point above the tile is not reachable";
-      goal_handle->abort(result);
-      return;
-    }
+    // if (!approach) {
+    //   result->success = false;
+    //   result->message = "approach point above the tile is not reachable";
+    //   goal_handle->abort(result);
+    //   return;
+    // }
 
     if (!move_gripper("open", "failed to open gripper", goal_handle, result, feedback)) { return; }
-    if (!move_to_joints(goal_handle, result, feedback, "approaching tile", *approach)) { return; }
+    // if (!move_to_joints(goal_handle, result, feedback, "approaching tile", *approach)) { return; }
     if (!move_to_joints(goal_handle, result, feedback, "lowering onto tile", *grasp)) { return; }
     if (!move_gripper("close", "failed to close gripper", goal_handle, result, feedback)) { return; }
-    if (!move_to_joints(goal_handle, result, feedback, "lifting tile", *approach)) { return; }
     if (!move_to_joints(goal_handle, result, feedback, "moving to carry pose", carry_pose)) { return; }
 
     result->success = true;
@@ -322,12 +325,13 @@ private:
     geometry_msgs::msg::PointStamped tile = goal->pos;
     tile.header.stamp = rclcpp::Time(0);
 
-    std::optional<std::map<std::string, double>> approach, place;
+    std::optional<std::map<std::string, double>> place;
     try {
       auto tile_base = tf_buffer_.transform(tile, "base_link", tf2::durationFromSec(0.3)).point;
+      tile_base.z = std::max(tile_base.z, kMinTileZ);
       place = solve_ik(tile_base);
       tile_base.z += kApproachHeight;
-      approach = solve_ik(tile_base);
+      // approach = solve_ik(tile_base);
     } catch (const tf2::TransformException & ex) {
       result->success = false;
       result->message = std::string("drop TF failed: ") + ex.what();
@@ -342,17 +346,16 @@ private:
       goal_handle->abort(result);
       return;
     }
-    if (!approach) {
-      result->success = false;
-      result->message = "approach point above the drop position is not reachable";
-      goal_handle->abort(result);
-      return;
-    }
+    // if (!approach) {
+    //   result->success = false;
+    //   result->message = "approach point above the drop position is not reachable";
+    //   goal_handle->abort(result);
+    //   return;
+    // }
 
-    if (!move_to_joints(goal_handle, result, feedback, "approaching drop position", *approach)) { return; }
+    // if (!move_to_joints(goal_handle, result, feedback, "approaching drop position", *approach)) { return; }
     if (!move_to_joints(goal_handle, result, feedback, "lowering to drop position", *place)) { return; }
     if (!move_gripper("open", "failed to open gripper", goal_handle, result, feedback)) { return; }
-    if (!move_to_joints(goal_handle, result, feedback, "retreating", *approach)) { return; }
     if (!move_to_joints(goal_handle, result, feedback, "moving to detection pose", detection_pose)) { return; }
 
     result->success = true;
