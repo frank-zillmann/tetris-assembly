@@ -284,7 +284,6 @@ private:
     if (!move_to_joints(goal_handle, result, feedback, "approaching tile", *approach)) { return; }
     if (!move_to_joints(goal_handle, result, feedback, "lowering onto tile", *grasp)) { return; }
     if (!move_gripper("close", "failed to close gripper", goal_handle, result, feedback)) { return; }
-    if (!move_to_joints(goal_handle, result, feedback, "lifting tile", *approach)) { return; }
     if (!move_to_joints(goal_handle, result, feedback, "moving to carry pose", carry_pose)) { return; }
 
     result->success = true;
@@ -357,7 +356,6 @@ private:
     if (!move_to_joints(goal_handle, result, feedback, "approaching drop position", *approach)) { return; }
     if (!move_to_joints(goal_handle, result, feedback, "lowering to drop position", *place)) { return; }
     if (!move_gripper("open", "failed to open gripper", goal_handle, result, feedback)) { return; }
-    if (!move_to_joints(goal_handle, result, feedback, "retreating", *approach)) { return; }
     if (!move_to_joints(goal_handle, result, feedback, "moving to detection pose", detection_pose)) { return; }
 
     result->success = true;
