@@ -130,8 +130,14 @@ class DetectionNode(Node):
         # Aruco setup
         dict_str = self.get_parameter('aruco_dict').value # read parameter to make it more modular
         self._aruco_dict = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, dict_str))
-        self._aruco_params = cv2.aruco.DetectorParameters()
-        self._detector = cv2.aruco.ArucoDetector(self._aruco_dict, self._aruco_params)
+        self._aruco_params = cv2.aruco.DetectorParameters_create()
+
+        if hasattr(cv2.aruco, 'ArucoDetector'):
+            self._detector = cv2.aruco.ArucoDetector(self._aruco_dict, self._aruco_params)
+            self._use_new_aruco_api = True
+        else:
+            self._detector = None
+            self._use_new_aruco_api = False
 
 
     def _target_callback(self, msg: Int32MultiArray):
@@ -185,7 +191,13 @@ class DetectionNode(Node):
 
         # convert to grayscale
         gray_cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-        corners, ids, rejected = self._detector.detectMarkers(gray_cv_img)
+
+        if self._use_new_aruco_api:
+            corners, ids, rejected = self._detector.detectMarkers(gray_cv_img)
+        else:
+            corners, ids, rejected = cv2.aruco.detectMarkers(
+                gray_cv_img, self._aruco_dict, parameters=self._aruco_params
+            )
 
         self.get_logger().debug(f"Detected markers: {ids}")
         if ids is not None:
