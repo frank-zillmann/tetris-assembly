@@ -92,20 +92,20 @@ class MoveToLocation(Node):
         self.current_pose = msg.pose.pose
 
     def _on_marker_pose(self, msg: PoseStamped):
-    self._latest_pose = msg
-    # Workaround: their code currently encodes marker_id in position.z
-    marker_id = int(round(msg.pose.position.z))
-    if marker_id in self.MARKER_ID_TO_LABEL:
-        label = self.MARKER_ID_TO_LABEL[marker_id]
-        stored = PoseStamped()
-        stored.header = msg.header
-        stored.pose = msg.pose
-        stored.pose.position.z = 0.0   # zero it out so Nav2 doesn't try to fly
-        self.dynamic_locations[label] = stored
-        self.get_logger().info(
-            f"Stored '{label}' (id={marker_id}) at "
-            f"({stored.pose.position.x:.3f}, {stored.pose.position.y:.3f})"
-        )
+        self._latest_pose = msg
+        # Workaround: their code currently encodes marker_id in position.z
+        marker_id = int(round(msg.pose.position.z))
+        if marker_id in self.MARKER_ID_TO_LABEL:
+            label = self.MARKER_ID_TO_LABEL[marker_id]
+            stored = PoseStamped()
+            stored.header = msg.header
+            stored.pose = msg.pose
+            stored.pose.position.z = 0.0   # zero it out so Nav2 doesn't try to fly
+            self.dynamic_locations[label] = stored
+            self.get_logger().info(
+                f"Stored '{label}' (id={marker_id}) at "
+                f"({stored.pose.position.x:.3f}, {stored.pose.position.y:.3f})"
+            )
 
     def _on_marker_found(self, msg: Int32):
         """
