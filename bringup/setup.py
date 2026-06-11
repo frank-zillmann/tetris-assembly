@@ -3,7 +3,7 @@ import os
 
 from setuptools import find_packages, setup
 
-package_name = 'tetris_assembly_bringup'
+package_name = 'bringup'
 
 setup(
     name=package_name,
