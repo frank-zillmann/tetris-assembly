@@ -6,16 +6,22 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-	slam_launch = IncludeLaunchDescription(
-		PythonLaunchDescriptionSource(
-			PathJoinSubstitution([FindPackageShare("slam"), "launch", "slam.launch.py"])
-		)
-	)
+    slam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare("slam"), "launch", "slam.launch.py"])
+        )
+    )
 
-	grasping_launch = IncludeLaunchDescription(
-		PythonLaunchDescriptionSource(
-			PathJoinSubstitution([FindPackageShare("grasping"), "launch", "grasping.launch.py"])
-		)
-	)
+    grasping_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare("grasping"), "launch", "grasping.launch.py"])
+        )
+    )
 
-	return LaunchDescription([slam_launch, grasping_launch])
+    detection_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare("detection"), "launch", "detection.launch.py"])
+        )
+    )
+
+    return LaunchDescription([slam_launch, grasping_launch, detection_launch, navigation_launch])
