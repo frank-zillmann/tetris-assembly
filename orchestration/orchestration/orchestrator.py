@@ -41,10 +41,10 @@ DROP_LOCATION = 'drop'
 # 'base_link' frame when the robot is at the DROP_LOCATION. Order of this dict = order tiles are processed. The pick pose is
 # found live by the detection node, so it is NOT listed here.
 TILE_TARGETS: dict[int, tuple] = {
-    1: (0.35, 6.75, -0.1),
+    8: (0.35, 6.75, -0.1),
     2: (0.38, 2.25, -0.1),
-    3: (0.38, -2.25, -0.1),
-    4: (0.35, -6.75, -0.1),
+    7: (0.38, -2.25, -0.1),
+    6: (0.35, -6.75, -0.1),
 }
 
 NAV_TIMEOUT = 60.0
