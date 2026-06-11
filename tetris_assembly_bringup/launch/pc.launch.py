@@ -14,7 +14,6 @@ def generate_launch_description():
         )
 
     return LaunchDescription([
-        include("slam",          "launch", "slam.launch.py"),
         include("detection",     "launch", "detection.launch.py"),
         include("orchestration", "launch", "orchestrator.launch.py"),
     ])
