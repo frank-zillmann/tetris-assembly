@@ -24,4 +24,10 @@ def generate_launch_description():
         )
     )
 
-    return LaunchDescription([slam_launch, grasping_launch, detection_launch])
+    navigation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([FindPackageShare("navigation"), "launch", "navigation.launch.py"])
+        )
+    )
+
+    return LaunchDescription([slam_launch, grasping_launch, detection_launch, navigation_launch])
