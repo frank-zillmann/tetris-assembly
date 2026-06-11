@@ -31,7 +31,7 @@ class MoveToLocation(Node):
     }
     # Discard a cached pose if it's older than this when the marker-id
     # announcement arrives (race protection).
-    POSE_STALE_AFTER = Duration(seconds=1.0)
+    POSE_STALE_AFTER = Duration(seconds=60.0)
     # ================================================================
 
     def __init__(self):
