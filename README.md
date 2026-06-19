@@ -28,8 +28,26 @@ ros2 run nav2_map_server map_saver_cli -t /map_lidar \
 ## navigation
 TODO
 
-## detection
-TODO
+## detection (Moritz)
+Run with:
+```bash
+ros2 launch detection detection.launch.py
+```
+Detects ArUco markers in the gripper camera feed and publishes their pose in the map frame using `solvePnP` + TF2.
+
+- publishes marker pose (x, y in map frame) on `/detection/marker_pose`
+- publishes found marker ID on `/detection/found_marker_id`
+- listens for which markers to track on `/detection/target_marker_ids`
+
+Set target markers at runtime (can be overwritten) with:
+```bash
+ros2 topic pub --once /detection/target_marker_ids std_msgs/Int32MultiArray "data: [1, 2, 3, ...]"
+```
+
+See details in [detection/README.md](detection/README.md)
+
+Also contains a Proof of Concept for Grid Detection.
+<img src="grid_detection.png" width="400" alt="grid_detection"/>
 
 ## grasping (Frank)
 Run with:

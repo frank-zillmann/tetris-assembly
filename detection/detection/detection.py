@@ -22,66 +22,64 @@ MARKER_CONFIG = {
     0: {
         "name": "tetris_grid",
         "size_m": 0.1,  # 10cm marker
-        # Offset in marker frame where robot should navigate to.
+        # [not used here] Offset in marker frame where robot should navigate to.
         # Marker Z points out (towards camera), X right, Y down.
-        # To be 50cm in front of it: Z = 0.5.
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.5},
-        # To face the marker, we need to rotate 180 around Y so camera looks at it
-        # (Assuming robot front is +X, and marker Z is out)
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
+        # [not used here] Rotation to apply to the robot.
         "target_yaw_offset": math.pi 
     },
     1: {
         "name": "Block",
         "size_m": 0.03,  # 3cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     },
     2: {
         "name": "Block",
         "size_m": 0.03,  # 3cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     },
     3: {
         "name": "Block",
         "size_m": 0.03,  # 3cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     },
     4: {
         "name": "Block",
         "size_m": 0.03,  # 3cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     },
     5: {
         "name": "Block",
         "size_m": 0.03,  # 3cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     },
     6: {
         "name": "Block",
         "size_m": 0.03,  # 3cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     },
     7: {
         "name": "Block",
         "size_m": 0.03,  # 3cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     },
     8: {
         "name": "Block",
         "size_m": 0.03,  # 3cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     },
     9: {
         "name": "storage_area",
         "size_m": 0.1,  # 10cm
-        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.6},
+        "target_offset": {"x": 0.0, "y": 0.0, "z": 0.0},
         "target_yaw_offset": math.pi
     }
 }
@@ -91,45 +89,41 @@ class DetectionNode(Node):
     def __init__(self) -> None:
         super().__init__('nth_image_detection')
 
-        # declare parameters
+        # -- declare parameters --
+        self.declare_parameter('process_every_n', 6)
+
         self.declare_parameter('image_topic', '/gripper_camera/image_raw/compressed')
         self.declare_parameter('use_compressed_img', True)
-
         self.declare_parameter('camera_info_topic', '/gripper_camera/camera_info')
         self.declare_parameter('use_hardcoded_camera_info', True)
-        #self.declare_parameter('fallback_camera_k', [540.0, 0.0, 320.0, 0.0, 540.0, 240.0, 0.0, 0.0, 1.0]) # camera matrix
-        #self.declare_parameter('fallback_camera_d', [0.0, 0.0, 0.0, 0.0, 0.0]) # camera distortion (Radial Distortion (3) & Tangential Distortion (2))
-        # calibrated
         self.declare_parameter('fallback_camera_k', [827.01, 0.0, 306.50, 0.0, 817.84, 221.24, 0.0, 0.0, 1.0]) # camera matrix
         self.declare_parameter('fallback_camera_d', [-1.147382, 21.242253, 0.013422, 0.000006, -147.716365]) # camera distortion (Radial Distortion (3) & Tangential Distortion (2))
 
-
-        self.declare_parameter('process_every_n', 6)
         self.declare_parameter('aruco_dict', 'DICT_4X4_1000')
 
-        self._look_for_marker_ids: set[int] = set()  # empty = not looking for any marker
+        # -- assign parameter --
+        self._process_every_n = max(1, int(self.get_parameter('process_every_n').value))
 
-        # assign parameter
         self._image_topic = self.get_parameter('image_topic').value
         self._use_compressed_img = self.get_parameter('use_compressed_img').value
-        self._process_every_n = max(1, int(self.get_parameter('process_every_n').value))
-        self._frame_count = 0
-
+        self._camera_info_topic = self.get_parameter('camera_info_topic').value
+        self._use_hardcoded_camera_info = self.get_parameter('use_hardcoded_camera_info').value
         k = self.get_parameter('fallback_camera_k').value
         d = self.get_parameter('fallback_camera_d').value
 
-        self._use_hardcoded_camera_info = self.get_parameter('use_hardcoded_camera_info').value
-        self._camera_info_topic = self.get_parameter('camera_info_topic').value
+        dict_str = self.get_parameter('aruco_dict').value
 
-
+        # others
+        self._frame_count = 0
+        self._look_for_marker_ids: set[int] = set()  # empty -> not looking for any marker
         self._cv_bridge = CvBridge()
 
-        # TF2 Setup
+        # -- TF2 Setup --
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
         self._tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
-        
+        # -- create subscriptions --
         self._target_sub = self.create_subscription(
             Int32MultiArray,
             '/detection/target_marker_ids',
@@ -173,16 +167,15 @@ class DetectionNode(Node):
             )
         self.get_logger().info("Subscriptions & Node initialized...")
 
-        # PUBLISHER
+        # -- Publisher --
         self._marker_pose_pub = self.create_publisher(PoseStamped, '/detection/marker_pose', 10)
         self._found_marker_pub = self.create_publisher(Int32, '/detection/found_marker_id', 10)
 
-
-        # Aruco setup
-        dict_str = self.get_parameter('aruco_dict').value # read parameter to make it more modular
+        # -- Aruco setup --
         self._aruco_dict = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, dict_str))
         self._aruco_params = cv2.aruco.DetectorParameters_create()
 
+        # depending on OpenCV version use cv2.aruco.ArucoDetector or cv2.aruco.detectMarkers()
         if hasattr(cv2.aruco, 'ArucoDetector'):
             self._detector = cv2.aruco.ArucoDetector(self._aruco_dict, self._aruco_params)
             self._use_new_aruco_api = True
@@ -191,6 +184,7 @@ class DetectionNode(Node):
             self._use_new_aruco_api = False
 
 
+    # Called when topic /detection/target_marker_ids is triggered
     def _target_callback(self, msg: Int32MultiArray):
         self._look_for_marker_ids = set(msg.data)
         self.get_logger().info(f"Now tracking marker IDs: {self._look_for_marker_ids}")
@@ -203,21 +197,6 @@ class DetectionNode(Node):
             self._dist_coeffs   = np.array(msg.d, dtype=np.float64)
             self.get_logger().info("Received camera intrinsics.")
 
-    def _get_marker_in_map(self, marker_frame_name: str):
-        try:
-            return self._tf_buffer.lookup_transform(
-                'map',
-                marker_frame_name,
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.05),
-            )
-        except tf2_ros.LookupException as e:
-            self.get_logger().warn(f"TF lookup failed: {e}")
-        except tf2_ros.ConnectivityException as e:
-            self.get_logger().warn(f"TF tree not connected: {e}")
-        except tf2_ros.ExtrapolationException as e:
-            self.get_logger().warn(f"TF extrapolation error: {e}")
-        return None
 
     # Called when Image is received
     def _image_callback(self, msg: Image | CompressedImage) -> None:
@@ -225,12 +204,12 @@ class DetectionNode(Node):
             self.get_logger().info("No Camera matrix found.")
             return
 
-        # Execute only every n-th frame
-        self._frame_count += 1
-        if self._frame_count % self._process_every_n != 0:
+        # Execute only every n-th frame (implementing a time-base approach might be better)
+        self._frame_count = (self._frame_count + 1) % self._process_every_n
+        if self._frame_count != 0:
             return
 
-        # Convert image from ros to cv
+        # Convert image from ros-img to cv-img
         try:
             if self._use_compressed_img:
                 cv_img = self._cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -249,8 +228,9 @@ class DetectionNode(Node):
             corners, ids, rejected = cv2.aruco.detectMarkers(
                 gray_cv_img, self._aruco_dict, parameters=self._aruco_params
             )
-
         self.get_logger().debug(f"Detected markers: {ids}")
+
+        # Filter out markers based on the defined _look_for_marker_ids set
         if ids is not None:
             for i, marker_id in enumerate(ids.flatten()):
                 # only defined marker should be processed && the once we are looking for at the moment (via target marker sub)
@@ -258,10 +238,10 @@ class DetectionNode(Node):
                     self.get_logger().info(f"Found Target Marker ID {marker_id}.")
                     
                     # Marker found, now process marker
-                    self._process_marker(corners[i], marker_id, msg.header.frame_id, msg.header.stamp)
+                    self._process_single_marker(corners[i], marker_id, msg.header.frame_id, msg.header.stamp)
 
 
-    def _process_marker(self, corners, marker_id, camera_frame, stamp): # corners[i] = [[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]]
+    def _process_single_marker(self, corners, marker_id, camera_frame, stamp): # corners[i] = [[[x1,y1], [x2,y2], [x3,y3], [x4,y4]]]
         cur_marker_config = MARKER_CONFIG[marker_id]
         marker_size = cur_marker_config["size_m"]
 
@@ -282,7 +262,7 @@ class DetectionNode(Node):
             marker_3d_corners,      # what the marker looks like in 3D (defined above)
             corners.reshape(4, 2),  # where those corners appeared in the 2D image
             self._camera_matrix,    # camera intrinsics (focal length, principal point)
-            self._dist_coeffs#,       # lens distortion
+            self._dist_coeffs#,     # lens distortion
             #flags=cv2.SOLVEPNP_ITERATIVE
         )
         if not success:
@@ -291,15 +271,17 @@ class DetectionNode(Node):
 
         # A message that describes one relationship between two frames
         t = TransformStamped() 
-        # map → odom → base_link → camera → aruco_marker - we basically append the marker transform to the tree
         t.header.stamp = stamp  # use the image's original timestamp
-        t.header.frame_id = camera_frame
+        t.header.frame_id = camera_frame  # called default_cam
         marker_frame_name = f"aruco_marker_{marker_id}"
         t.child_frame_id = marker_frame_name
 
-        tvec = translation_vec.flatten()  # shape (3,) now
+        # Note: the TF chain will look something like: 
+        # map → odom → base_link → ... → wrist → default_cam → aruco_marker_X
+        # where wrist → default_cam is provided by the static transform in the launch file
 
         # add transform
+        tvec = translation_vec.flatten()  # shape (3,) now
         t.transform.translation.x = float(tvec[0])
         t.transform.translation.y = float(tvec[1])
         t.transform.translation.z = float(tvec[2])
@@ -313,7 +295,7 @@ class DetectionNode(Node):
         t.transform.rotation.w = quat[3]
 
         # Here be careful. We broadcast the transform message, but its only done
-        # every 3rd frame right now. So movement while running this node might be prone to errors.
+        # every x frame right now. So movement while running this node might be prone to errors.
         self._tf_broadcaster.sendTransform(t)
         map_tf = self._get_marker_in_map(marker_frame_name)
         if map_tf is None:
@@ -323,26 +305,45 @@ class DetectionNode(Node):
         # Pubishing the marker pose so other nodes can act on it
         pos = map_tf.transform.translation
         rotation = map_tf.transform.rotation
-        self.get_logger().info(
-            f"[DEBUG] Marker {marker_id} in map: "
-            f"x={pos.x:.3f}  y={pos.y:.3f}  z={pos.z:.3f}"
-        )
-        # AMar
+
+        # Create Pose Message of Marker relative to map 
         pose_msg = PoseStamped()
         pose_msg.header.stamp = self.get_clock().now().to_msg()
         pose_msg.header.frame_id = 'map'
         pose_msg.pose.position.x = pos.x
         pose_msg.pose.position.y = pos.y
-        pose_msg.pose.position.z = marker_id  # z value not required really, so we use it as marker_id field
+        pose_msg.pose.position.z = marker_id  # z value not required really, so we use it as marker_id field (hacky method)
         pose_msg.pose.orientation = rotation
         self._marker_pose_pub.publish(pose_msg)
 
-        # Success signal — the nav node listens to this
-        #found_msg = Int32()
-        #found_msg.data = int(marker_id)
-        #self._found_marker_pub.publish(found_msg)
+        # Success signal — the nav node listens to this (might not be in sync with pose)
+        found_msg = Int32()
+        found_msg.data = int(marker_id)
+        self._found_marker_pub.publish(found_msg)
 
+        self.get_logger().info(
+            f"[DEBUG] Marker {marker_id} in map: "
+            f"x={pos.x:.3f}  y={pos.y:.3f}  z={pos.z:.3f}"
+        )
 
+    # To observe how the TF tree actually looks like if we cant find the map tf
+    def _get_marker_in_map(self, marker_frame_name: str):
+        try:
+            return self._tf_buffer.lookup_transform(
+                'map',
+                marker_frame_name,
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=0.05),
+            )
+        except tf2_ros.LookupException as e:
+            self.get_logger().warn(f"TF lookup failed: {e}")
+            self.get_logger().warn(f"Known TF frames:\n{self._tf_buffer.all_frames_as_string()}")
+        except tf2_ros.ConnectivityException as e:
+            self.get_logger().warn(f"TF tree not connected: {e}")
+            self.get_logger().warn(f"Known TF frames:\n{self._tf_buffer.all_frames_as_string()}")
+        except tf2_ros.ExtrapolationException as e:
+            self.get_logger().warn(f"TF extrapolation error: {e}")
+        return None
 
 
 def main(args=None):
@@ -360,11 +361,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
-
-# HOW TO:
-
-# run this to look for specific markers only with marker ids
-#ros2 topic pub --once /detection/target_marker_ids std_msgs/Int32MultiArray "data: [1, 2]"
-
-
