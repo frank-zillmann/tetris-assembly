@@ -25,8 +25,44 @@ ros2 run nav2_map_server map_saver_cli -t /map_lidar \
   -f /home/mirte/mirte_ws/src/mirte_navigation/maps/default
 ```
 
-## navigation
-TODO
+## Navigation
+
+Handles "go to location X" requests from the orchestrator and executes
+them on the robot via Nav2.
+
+The single node is [`navigation/move_to_server.py`](navigation/move_to_server.py).
+It subscribes to live marker detections from the vision team, transforms
+them into the `map` frame, and stores each as a named location (`'pickup'`,
+`'goal'`). When the orchestrator calls `/move_to`, it dispatches a
+`/navigate_to_pose` action goal to Nav2 — which handles path planning,
+local costmaps, dynamic obstacle avoidance, and recoveries. The robot's
+arrival is published on `/robot_status`.
+
+### Interfaces
+
+| Direction | Name                            | Type                                              |
+|-----------|---------------------------------|---------------------------------------------------|
+| Service   | `/move_to`                      | `mirte_location_markers/srv/MoveTo`               |
+| Service   | `/move_forward`                 | `mirte_location_markers/srv/MoveForward`          |
+| Service   | `/rotate_ccw`                   | `mirte_location_markers/srv/RotateCCW`            |
+| Sub       | `/detection/marker_pose`        | `geometry_msgs/msg/PoseStamped` (id in `position.z`) |
+| Pub       | `/robot_status`                 | `std_msgs/msg/String`                             |
+| Action    | `/navigate_to_pose` (client)    | `nav2_msgs/action/NavigateToPose`                 |
+
+### Running
+
+Launched on the robot as part of `mirte.launch.py`. To run standalone:
+
+```bash
+python3 navigation/move_to_server.py
+```
+
+Requires Nav2 (`mirte_navigation/minimal_navigation_launch.py`) to be
+active first.
+
+See [`navigation/README.md`](navigation/README.md) for the full module
+documentation: manual operation, configuration, troubleshooting, and
+design notes.
 
 ## detection (Moritz)
 Run with:
