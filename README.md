@@ -3,6 +3,14 @@
 
 <img src="mirte_grasping_tetris_tile.jpeg" width="400" alt="mirte_grasping_tetris_tile"/>
 
+## Install:
+Run
+```
+git clone https://github.com/frank-zillmann/tetris-assembly-ws.git --recurse-submodules
+```
+which contains this repository and many other necessary repositories as a git submodules to simplify setup.
+Then follow the instructions of its README.
+
 # Packages:
 ## data_collection (Frank) 
 Provides:
